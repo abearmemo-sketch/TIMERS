@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>極簡 Toggl 計時器</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: rgba(0,0,0,0.05); color: #333; }
+  #timer { font-family: 'Roboto Mono', monospace; font-size: 2.5rem; margin-bottom: 0.5rem; }
+  #task-desc { font-size: 1.25rem; margin-bottom: 1rem; }
+  button { background-color: #666; color: #fff; padding: 0.5rem 1rem; border-radius: 0.25rem; }
+  button:hover { background-color: #444; }
+</style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+<div class="flex flex-col items-center gap-4">
+    <div id="timer">00:00:00</div>
+    <div id="task-desc">載入中...</div>
+    <button id="update-btn">更新資訊</button>
+</div>
+
+<script>
+const TOGGL_API = "/api/TTTT";
+const SAVE_API = "/api/saveEntry";
+const NOTION_API = "/api/notionPush"; // 如果按下更新時要同步 Notion
+
+const timerDiv = document.getElementById("timer");
+const taskDescDiv = document.getElementById("task-desc");
+const updateBtn = document.getElementById("update-btn");
+
+let startTime = null;
+let intervalId = null;
+
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function updateTimer() {
+    if(!startTime) return;
+    const diff = Math.floor((new Date() - startTime)/1000);
+    const h = pad(Math.floor(diff/3600));
+    const m = pad(Math.floor((diff%3600)/60));
+    const s = pad(diff%60);
+    timerDiv.textContent = `${h}:${m}:${s}`;
+}
+
+// 載入暫存資料
+async function loadSavedEntry(){
+    try{
+        const res = await fetch(SAVE_API);
+        const data = await res.json();
+        if(data.start && data.description){
+            startTime = new Date(data.start.replace(' ','T'));
+            taskDescDiv.textContent = data.description;
+            if(intervalId) clearInterval(intervalId);
+            updateTimer();
+            intervalId = setInterval(updateTimer,1000);
+        } else {
+            taskDescDiv.textContent = "尚無計時資料";
+        }
+    }catch(err){
+        console.error(err);
+        taskDescDiv.textContent = "讀取暫存資料失敗";
+    }
+}
+
+// 更新 Toggl 並同步 Notion
+async function fetchTimeEntry(){
+    taskDescDiv.textContent = "更新中...";
+    try{
+        const res = await fetch(TOGGL_API);
+        const data = await res.json();
+
+        if(data.current_timer && data.current_timer.id){
+            const entry = {
+                start: data.current_timer.start,
+                description: data.current_timer.description || "（無描述）"
+            };
+            startTime = new Date(entry.start);
+
+            // 更新暫存資料
+            await fetch(SAVE_API, {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify(entry)
+            });
+
+            // 同步 Notion
+            await fetch(NOTION_API, {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body: JSON.stringify({ task: entry.description, startDate: entry.start })
+            });
+
+            taskDescDiv.textContent = entry.description;
+
+            if(intervalId) clearInterval(intervalId);
+            updateTimer();
+            intervalId = setInterval(updateTimer,1000);
+        } else {
+            taskDescDiv.textContent = "目前沒有計時中項目";
+            startTime = null;
+            timerDiv.textContent = "00:00:00";
+        }
+    }catch(err){
+        console.error(err);
+        taskDescDiv.textContent = "更新失敗，請檢查網路或 API";
+    }
+}
+
+updateBtn.addEventListener("click", fetchTimeEntry);
+window.onload = loadSavedEntry;
+</script>
+
+</body>
+</html>
