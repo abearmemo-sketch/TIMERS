@@ -4,10 +4,8 @@ export default async function handler(req, res) {
   const { task, startDate } = req.body;
 
   try {
-    // 將時間轉成本地 ISO 字串，去掉 Z
-    const date = new Date(startDate);
-    const tzOffset = date.getTimezoneOffset() * 60000; // 毫秒
-    const localISO = new Date(date - tzOffset).toISOString().slice(0, -1);
+    // 直接使用 UTC ISO 字串，不去掉 Z
+    const utcISO = new Date(startDate).toISOString();
 
     const response = await fetch(
       "https://api.notion.com/v1/pages/265aa782851d80e8a6d5dde28fb9615d",
@@ -21,7 +19,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           properties: {
             "Task": { rich_text: [{ text: { content: task } }] },
-            "Start Date": { date: { start: localISO } } // <-- 改這裡
+            "Start Date": { date: { start: utcISO } } // <-- 改這裡
           }
         })
       }
