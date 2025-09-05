@@ -3,10 +3,16 @@ export default async function handler(req, res) {
 
   const { task, startDate } = req.body;
 
-  try {
-    // 直接使用 UTC ISO 字串，不去掉 Z
-    const utcISO = new Date(startDate).toISOString();
+  // 將時間轉成本地 Notion ISO 格式（不帶 Z）
+  function toLocalNotionISO(dateStr) {
+    const d = new Date(dateStr);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+  }
 
+  const localISO = toLocalNotionISO(startDate);
+
+  try {
     const response = await fetch(
       "https://api.notion.com/v1/pages/265aa782851d80e8a6d5dde28fb9615d",
       {
@@ -19,7 +25,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           properties: {
             "Task": { rich_text: [{ text: { content: task } }] },
-            "Start Date": { date: { start: utcISO } } // <-- 改這裡
+            "Start Date": { date: { start: localISO } } // 使用本地 ISO
           }
         })
       }
