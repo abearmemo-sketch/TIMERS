@@ -16,7 +16,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           properties: {
             "Task": { rich_text: [{ text: { content: task } }] },
-            "Start Date": { date: { start: startDate } } // 直接給文字，不做時區轉換
+            "Start Date": { rich_text: [{ text: { content: startDate } } // 直接給文字，不做時區轉換
           }
         })
       }
