@@ -6,87 +6,37 @@
 <title>Toggl 計時器</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;500;700&display=swap');
-  
   body {
     font-family: 'Inter', sans-serif;
-    /* 黑色背景 */
-    background-color: #1a1a1a; 
-    /* 灰色字體 */
-    color: #b3b3b3; 
+    background-color: #1a1a1a;
+    color: #b3b3b3;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
-    padding: 0.5rem; /* 縮小外部 padding */
+    padding: 0.5rem;
     box-sizing: border-box;
   }
-  
   .container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem; /* 縮小間距 */
-    max-width: 300px; /* 縮小最大寬度 */
+    gap: 0.75rem;
+    max-width: 300px;
     width: 100%;
-    padding: 1.5rem; /* 縮小內邊距 */
-    border-radius: 0.75rem; /* 圓角更小 */
-    background-color: #2c2c2c; 
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); 
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    background-color: #2c2c2c;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
   }
-  
-  #task-desc {
-    font-size: 1rem; /* 縮小字體 */
-    font-weight: 500;
-    text-align: center;
-    color: #e0e0e0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    width: 100%; 
-  }
-  
-  #timer {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 2rem; /* 縮小計時器數字 */
-    font-weight: 700;
-    color: #e6e6e6;
-    letter-spacing: 0.05rem; /* 縮小字母間距 */
-  }
-  
-  #start-time {
-    font-size: 0.85rem; /* 縮小字體 */
-    color: #8a8a8a;
-    margin-top: -0.5rem; /* 往上調整 */
-  }
-  
-  #update-btn {
-    font-family: 'Inter', sans-serif;
-    font-weight: 500;
-    padding: 0.5rem 1rem; /* 縮小按鈕 */
-    background-color: #555555;
-    color: #ffffff;
-    border-radius: 0.4rem; 
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.1s;
-  }
-  
-  #update-btn:hover {
-    background-color: #666666;
-  }
-  
-  #update-btn:active {
-    transform: scale(0.98);
-  }
-  
-  #status {
-    font-size: 0.8rem; /* 縮小字體 */
-    color: #8a8a8a;
-    margin-top: -0.5rem;
-  }
-
+  #task-desc { font-size: 1rem; font-weight: 500; text-align: center; color: #e0e0e0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+  #timer { font-family: 'Roboto Mono', monospace; font-size: 2rem; font-weight: 700; color: #e6e6e6; }
+  #start-time { font-size: 0.85rem; color: #8a8a8a; margin-top: -0.5rem; }
+  #update-btn { font-family: 'Inter', sans-serif; font-weight: 500; padding: 0.5rem 1rem; background-color: #555555; color: #ffffff; border-radius: 0.4rem; border: none; cursor: pointer; transition: background-color 0.3s, transform 0.1s;}
+  #update-btn:hover { background-color: #666666; }
+  #update-btn:active { transform: scale(0.98); }
+  #status { font-size: 0.8rem; color: #8a8a8a; margin-top: -0.5rem; }
 </style>
 </head>
 <body>
@@ -113,14 +63,20 @@ const statusDiv = document.getElementById("status");
 let startTime = null;
 let intervalId = null;
 
-function formatTime(dateStr) {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    const pad = (num) => String(num).padStart(2,'0');
-    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+function pad(num){ return String(num).padStart(2,'0'); }
 
-function pad(num) { return String(num).padStart(2,'0'); }
+// 前端生成 ISO 8601 +08:00 字串
+function formatTime(dateStr){
+    if(!dateStr) return "";
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = pad(date.getMonth()+1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
+}
 
 function updateTimer() {
     if (!startTime) return;
@@ -141,9 +97,9 @@ async function loadSavedEntry() {
             startTimeDiv.textContent = data.start;
             taskDescDiv.textContent = data.description;
             startTime = new Date(data.start.replace(' ', 'T'));
-            if (intervalId) clearInterval(intervalId);
+            if(intervalId) clearInterval(intervalId);
             updateTimer();
-            intervalId = setInterval(updateTimer, 1000);
+            intervalId = setInterval(updateTimer,1000);
             statusDiv.textContent = "已載入暫存資料";
         } else {
             startTimeDiv.textContent = "--:--";
@@ -152,7 +108,7 @@ async function loadSavedEntry() {
             startTime = null;
             statusDiv.textContent = "尚無暫存資料";
         }
-    } catch(err) {
+    } catch(err){
         console.error(err);
         statusDiv.textContent = "讀取暫存資料失敗";
     }
@@ -164,7 +120,7 @@ updateBtn.addEventListener("click", async () => {
         const res = await fetch(TOGGL_API);
         const data = await res.json();
 
-        if (data.current_timer && data.current_timer.id) {
+        if(data.current_timer && data.current_timer.id){
             const entry = {
                 start: formatTime(data.current_timer.start),
                 description: data.current_timer.description || "無描述"
@@ -174,33 +130,31 @@ updateBtn.addEventListener("click", async () => {
             taskDescDiv.textContent = entry.description;
             startTime = new Date(data.current_timer.start);
 
-            // 存入暫存資料
-            await fetch(SAVE_API, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(entry)
+            await fetch(SAVE_API,{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify(entry)
             });
 
-            // 同步到 Notion
-            await fetch(NOTION_API, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ task: entry.description, startDate: entry.start })
+            await fetch(NOTION_API,{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({task: entry.description, startDate: entry.start})
             });
 
-            if (intervalId) clearInterval(intervalId);
+            if(intervalId) clearInterval(intervalId);
             updateTimer();
-            intervalId = setInterval(updateTimer, 1000);
+            intervalId = setInterval(updateTimer,1000);
             statusDiv.textContent = "已更新 Toggl + Notion ✅";
         } else {
             startTimeDiv.textContent = "--:--";
             taskDescDiv.textContent = "無任務";
             timerDiv.textContent = "00:00:00";
             startTime = null;
-            if (intervalId) clearInterval(intervalId); // 停止計時
+            if(intervalId) clearInterval(intervalId);
             statusDiv.textContent = "目前沒有計時中項目";
         }
-    } catch(err) {
+    } catch(err){
         console.error(err);
         statusDiv.textContent = "抓取失敗，請檢查網路或 API";
     }
