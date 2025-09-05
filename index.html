@@ -6,8 +6,30 @@
 <title>Toggl 計時器</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-body { font-family: 'Inter', sans-serif; background-color: #1a1a1a; color: #b3b3b3; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 0.5rem; box-sizing: border-box; }
-.container { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; max-width: 300px; width: 100%; padding: 1.5rem; border-radius: 0.75rem; background-color: #2c2c2c; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #1a1a1a;
+  color: #b3b3b3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 300px;
+  width: 100%;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background-color: #2c2c2c;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+}
 #task-desc { font-size: 1rem; font-weight: 500; text-align: center; color: #e0e0e0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
 #timer { font-family: 'Roboto Mono', monospace; font-size: 2rem; font-weight: 700; color: #e6e6e6; }
 #start-time { font-size: 0.85rem; color: #8a8a8a; margin-top: -0.5rem; }
@@ -30,7 +52,7 @@ body { font-family: 'Inter', sans-serif; background-color: #1a1a1a; color: #b3b3
 <script>
 const TOGGL_API = "/api/TTTT";
 const SAVE_API = "/api/saveEntry";
-const NOTION_API = "/api/notionPush"; // 假設這個 API 可返回 Notion 上最新的 Start Date
+const NOTION_API = "/api/notionPush";
 
 const startTimeDiv = document.getElementById("start-time");
 const taskDescDiv = document.getElementById("task-desc");
@@ -43,75 +65,88 @@ let intervalId = null;
 
 function pad(num){ return String(num).padStart(2,'0'); }
 
-// ISO 8601 +08:00 字串
+// 顯示時間 YYYY-MM-DD HH:mm:ss
+function displayTime(dateStr){
+    if(!dateStr) return "--:--";
+    const date = new Date(dateStr);
+    const pad=(n)=>String(n).padStart(2,'0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+// 前端生成 ISO 8601 +08:00 字串給 Notion
 function formatTime(dateStr){
     if(!dateStr) return "";
     const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = pad(date.getMonth()+1);
-    const day = pad(date.getDate());
-    const hours = pad(date.getHours());
-    const minutes = pad(date.getMinutes());
-    const seconds = pad(date.getSeconds());
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
+    const pad = (n)=>String(n).padStart(2,'0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}+08:00`;
 }
 
 function updateTimer() {
     if (!startTime) return;
     const now = new Date();
-    const diff = Math.floor((now - startTime) / 1000);
-    const hours = pad(Math.floor(diff / 3600));
-    const minutes = pad(Math.floor((diff % 3600) / 60));
-    const seconds = pad(diff % 60);
+    const diff = Math.floor((now - startTime)/1000);
+    const hours = pad(Math.floor(diff/3600));
+    const minutes = pad(Math.floor((diff%3600)/60));
+    const seconds = pad(diff%60);
     timerDiv.textContent = `${hours}:${minutes}:${seconds}`;
 }
 
+// 讀取暫存資料或 Notion 最新時間
 async function loadSavedEntry() {
     statusDiv.textContent = "載入暫存資料...";
     try {
         const res = await fetch(SAVE_API);
         const data = await res.json();
 
-        if (data.start && data.description) {
-            // 先用暫存資料初始化
+        if(data.start && data.description){
+            // 有暫存資料
             startTimeDiv.textContent = data.start;
             taskDescDiv.textContent = data.description;
             startTime = new Date(data.start.replace(' ', 'T'));
+            if(intervalId) clearInterval(intervalId);
+            updateTimer();
+            intervalId = setInterval(updateTimer,1000);
+            statusDiv.textContent = "已載入暫存資料";
         } else {
-            startTimeDiv.textContent = "--:--";
-            taskDescDiv.textContent = "無任務";
-            startTime = null;
-        }
-
-        // 再向 Notion API 確認最新時間
-        const notionRes = await fetch(NOTION_API);
-        const notionData = await notionRes.json();
-        if (notionData.start && notionData.task) {
-            startTimeDiv.textContent = notionData.start;
-            taskDescDiv.textContent = notionData.task;
-            startTime = new Date(notionData.start.replace(' ', 'T'));
-
-            // 更新暫存資料
-            await fetch(SAVE_API,{
+            // 沒暫存資料 → 向 Notion 取最新 Start Date
+            const notionRes = await fetch(NOTION_API, {
                 method:"POST",
                 headers:{"Content-Type":"application/json"},
-                body: JSON.stringify({start: notionData.start, description: notionData.task})
+                body: JSON.stringify({fetchLatest:true})
             });
-        }
+            const notionData = await notionRes.json();
 
-        if(intervalId) clearInterval(intervalId);
-        updateTimer();
-        intervalId = setInterval(updateTimer,1000);
-        statusDiv.textContent = "已同步 Notion 最新時間";
+            if(notionData.start && notionData.task){
+                startTime = new Date(notionData.start);
+                startTimeDiv.textContent = displayTime(notionData.start);
+                taskDescDiv.textContent = notionData.task;
+                // 更新暫存
+                await fetch(SAVE_API,{
+                    method:"POST",
+                    headers:{"Content-Type":"application/json"},
+                    body: JSON.stringify({start: displayTime(notionData.start), description: notionData.task})
+                });
+                if(intervalId) clearInterval(intervalId);
+                updateTimer();
+                intervalId = setInterval(updateTimer,1000);
+                statusDiv.textContent = "已同步 Notion 最新時間 ✅";
+            } else {
+                startTimeDiv.textContent = "--:--";
+                taskDescDiv.textContent = "無任務";
+                timerDiv.textContent = "00:00:00";
+                startTime = null;
+                statusDiv.textContent = "尚無資料";
+            }
+        }
     } catch(err){
         console.error(err);
-        statusDiv.textContent = "讀取暫存資料或 Notion 失敗";
+        statusDiv.textContent = "讀取失敗";
     }
 }
 
 updateBtn.addEventListener("click", async () => {
     statusDiv.textContent = "更新中...";
-    try {
+    try{
         const res = await fetch(TOGGL_API);
         const data = await res.json();
 
@@ -120,21 +155,20 @@ updateBtn.addEventListener("click", async () => {
                 start: formatTime(data.current_timer.start),
                 description: data.current_timer.description || "無描述"
             };
-
-            startTimeDiv.textContent = entry.start;
+            startTimeDiv.textContent = displayTime(data.current_timer.start);
             taskDescDiv.textContent = entry.description;
             startTime = new Date(data.current_timer.start);
 
             await fetch(SAVE_API,{
                 method:"POST",
                 headers:{"Content-Type":"application/json"},
-                body:JSON.stringify(entry)
+                body: JSON.stringify({start: displayTime(data.current_timer.start), description: entry.description})
             });
 
             await fetch(NOTION_API,{
                 method:"POST",
                 headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({task: entry.description, startDate: entry.start})
+                body: JSON.stringify({task: entry.description, startDate: entry.start})
             });
 
             if(intervalId) clearInterval(intervalId);
@@ -149,6 +183,7 @@ updateBtn.addEventListener("click", async () => {
             if(intervalId) clearInterval(intervalId);
             statusDiv.textContent = "目前沒有計時中項目";
         }
+
     } catch(err){
         console.error(err);
         statusDiv.textContent = "抓取失敗，請檢查網路或 API";
