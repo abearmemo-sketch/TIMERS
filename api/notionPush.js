@@ -1,16 +1,7 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { task, startDate } = req.body;
-
-  // 將時間轉成本地 Notion ISO 格式（不帶 Z）
-  function toLocalNotionISO(dateStr) {
-    const d = new Date(dateStr);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-  }
-
-  const localISO = toLocalNotionISO(startDate);
+  const { task, startDate } = req.body; // 例如 "2025/09/05 17:46"
 
   try {
     const response = await fetch(
@@ -25,7 +16,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           properties: {
             "Task": { rich_text: [{ text: { content: task } }] },
-            "Start Date": { date: { start: localISO } } // 使用本地 ISO
+            "Start Date": { date: { start: startDate } } // 直接給文字，不做時區轉換
           }
         })
       }
