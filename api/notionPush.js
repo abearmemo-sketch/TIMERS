@@ -13,15 +13,17 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
           "Notion-Version": "2022-06-28"
         },
-        body: JSON.stringify({
-          properties: {
-            "Task": { rich_text: [{ text: { content: task } }] },
-            "Start Date": { rich_text: [{ text: { content: startDate } } // 直接給文字，不做時區轉換
+body: JSON.stringify({
+  properties: {
+    "Task": { rich_text: [{ text: { content: task } }] },
+    "Start Date": { rich_text: [{ text: { content: startDate } }] } // 直接給文字，不做時區轉換
           }
         })
       }
     );
 
+
+    
     const data = await response.json();
     if (!response.ok) return res.status(500).json({ error: data });
 
