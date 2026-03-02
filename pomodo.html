@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>現實同步蕃茄鐘</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.5s ease;
+            color: white;
+            overflow: hidden;
+        }
+        #label {
+            font-size: 5vw;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #timer {
+            font-size: 15vw;
+            font-weight: 900;
+            font-variant-numeric: tabular-nums;
+        }
+        .btn-container {
+            position: fixed;
+            top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="btn-container" id="controlPanel">
+        <button onclick="openPopup()">開啟獨立小視窗</button>
+    </div>
+
+    <div id="label">載入中...</div>
+    <div id="timer">00:00</div>
+
+    <script>
+        function updateTimer() {
+            const now = new Date();
+            const mins = now.getMinutes();
+            const secs = now.getSeconds();
+            
+            let isWork = false;
+            let remainingMins = 0;
+            let remainingSecs = 60 - secs;
+
+            // 判斷邏輯
+            if (mins < 25) {
+                // 00-24:59 行動
+                isWork = true;
+                remainingMins = 24 - mins;
+            } else if (mins < 30) {
+                // 25-29:59 休息
+                isWork = false;
+                remainingMins = 29 - mins;
+            } else if (mins < 55) {
+                // 30-54:59 行動
+                isWork = true;
+                remainingMins = 54 - mins;
+            } else {
+                // 55-59:59 休息
+                isWork = false;
+                remainingMins = 59 - mins;
+            }
+
+            // 處理秒數進位
+            if (remainingSecs === 60) {
+                remainingSecs = 0;
+                remainingMins += 1;
+            }
+
+            // 更新 UI
+            const labelEl = document.getElementById('label');
+            const timerEl = document.getElementById('timer');
+            
+            if (isWork) {
+                labelEl.innerText = "行動";
+                document.body.style.backgroundColor = "#ff4d4d"; // 紅色底
+            } else {
+                labelEl.innerText = "休息";
+                document.body.style.backgroundColor = "#2ecc71"; // 綠色底
+            }
+
+            timerEl.innerText = 
+                `${String(remainingMins).padStart(2, '0')}:${String(remainingSecs).padStart(2, '0')}`;
+        }
+
+        // 跳出視窗功能
+        function openPopup() {
+            const width = 300;
+            const height = 200;
+            const left = window.screen.width - width - 20;
+            const top = 20;
+            
+            // 重新開啟自己，但不帶控制按鈕
+            const popup = window.open(window.location.href + "?popup=true", "PomodoroPopup", 
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`);
+        }
+
+        // 隱藏控制項（如果在彈出視窗中）
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('popup')) {
+            document.getElementById('controlPanel').style.display = 'none';
+        }
+
+        // 每一秒更新一次
+        setInterval(updateTimer, 1000);
+        updateTimer();
+    </script>
+</body>
+</html>
